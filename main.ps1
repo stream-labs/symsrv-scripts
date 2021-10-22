@@ -27,20 +27,32 @@ param(
        [Parameter(Mandatory = $true)]
        [string] $AWS_SECRET_ACCESS_KEY,
        
-       # Optional, source paths to ignore
-       [string[]] $ignoreArray
+       # Source paths to ignore, format input like this "name,name,name"
+       [string[]] $ignoreArray,
+       
+       # An array of arrays of strings "one_UserName,one_RepoName,one_Branch;two_UserName,two_RepoName,two_Branch"
+       [string[][]] $subModules
 )
+
+$subModules_ArrayArray = @(@())
+
+if ($subModules -ne $null)
+{
+       $subModules = $subModules.split(";")
+
+       foreach ($rawArray in $subModules)
+       {
+              $rawArray = $rawArray.split(",")
+              $subModules_ArrayArray += ,$rawArray
+       }
+
+       Write-Output $subModules_ArrayArray[0]
+}
+
+cmd /c pause
 
 # Not sure why yaml names the repo with the repo_userId, but if the input is formatted like this then just correct it
 $repo_name = $repo_name -replace "$repo_userId/",""
-
-# Install winsdksetup to expected dir
-Write-Output ""
-Write-Output "Installing debugging tools from winsdksetup..."
-#Invoke-WebRequest https://go.microsoft.com/fwlink/?linkid=2173743 -OutFile winsdksetup.exe;    
-#start-Process winsdksetup.exe -ArgumentList '/features OptionId.WindowsDesktopDebuggers /uninstall /q' -Wait;    
-#start-Process winsdksetup.exe -ArgumentList '/features OptionId.WindowsDesktopDebuggers /q' -Wait;    
-#Remove-Item -Force winsdksetup.exe;
 
 # Copy symbols from the top of the source directory, it will search recursively for all *.pdb files
 Write-Output ""
@@ -53,32 +65,11 @@ cmd /c rmdir $symbolsFolder /s /q
 cmd /c mkdir $symbolsFolder
 cmd /c .\copy_all_pdbs_recursive.cmd $localSourceDir $symbolsFolder
 
-# Compile a list of submodules to the format (subModule_UserName, subModule_RepoName, subModule_Branch)
-$mainRepoUri = "https://api.github.com/repos/$repo_userId/$repo_name"
-$webRequestUri = "$mainRepoUri/contents?ref=$repo_branch"
-Write-Output ""
-Write-Output "Compiling a list of submodules from '$webRequestUri'..."
-$mainRepoContentJson = (Invoke-WebRequest $webRequestUri -UseBasicParsing | ConvertFrom-Json)
-
-$subModules = @(@())
-
-foreach ($subBlob in $mainRepoContentJson)
-{
-	if (!$subBlob.git_url.StartsWith($mainRepoUri))
-	{
-		$subModule_UserName = ($subBlob.url -replace "https://api.github.com/repos/*","").split('/')[0] 		
-		$subModule_RepoName = $subBlob.name
-		$subModule_Branch = $subBlob.sha		
-		$subModules += ,@($subModule_UserName, $subModule_RepoName, $subModule_Branch)
-		
-		Write-Output "Found sub-module: https://github.com/$subModule_UserName/$subModule_RepoName/tree/$subModule_Branch"
-	}
-}
-
+# Edit the pdb's with http addresses
 Write-Output ""
 Write-Output "Launching github-sourceindexer.ps1..."
 
-.\github-sourceindexer.ps1 -ignoreUnknown -ignore $ignoreArray -sourcesroot $localSourceDir -dbgToolsPath $dbgToolsPath -symbolsFolder $symbolsFolder -userId $repo_userId -repository $repo_name -branch $repo_branch -subModules $subModules -verbose
+.\github-sourceindexer.ps1 -ignoreUnknown -ignore $ignoreArray -sourcesroot $localSourceDir -dbgToolsPath $dbgToolsPath -symbolsFolder $symbolsFolder -userId $repo_userId -repository $repo_name -branch $repo_branch -subModules $subModules_ArrayArray -verbose
 
 # Run symstore on all of the .pdb's
 Write-Output ""

@@ -1,13 +1,11 @@
 @echo on
-echo Running symbol script test
-dir
 cd %1
+powershell.exe -ExecutionPolicy Bypass -Command %2
 
-if "%~9"=="" goto blank
-powershell.exe -ExecutionPolicy Bypass -Command ".\main.ps1 -localSourceDir %2 -outputFolder %3 -repo_userId %4 -repo_name %5 -repo_branch %6 -AWS_ACCESS_KEY_ID %7 -AWS_SECRET_ACCESS_KEY %8 -ignoreArray %9"
-GOTO done
+Rem main.bat 'ci' ".\main.ps1 -localSourceDir 'val' -outputFolder 'val' -repo_userId 'val' -repo_name 'val' -repo_branch 'val' -AWS_ACCESS_KEY_ID 'val' -AWS_SECRET_ACCESS_KEY 'val'
 
-:blank
-powershell.exe -ExecutionPolicy Bypass -Command ".\main.ps1 -localSourceDir %2 -outputFolder %3 -repo_userId %4 -repo_name %5 -repo_branch %6 -AWS_ACCESS_KEY_ID %7 -AWS_SECRET_ACCESS_KEY %8"
+Rem  Format like this
+Rem  -ignoreArray 'awss,awsi'
 
-:done
+Rem  Format like this
+Rem  -subModules 'one_UserName,one_RepoName,one_Branch;two_UserName,two_RepoName,two_Branch'

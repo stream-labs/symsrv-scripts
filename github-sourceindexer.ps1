@@ -84,7 +84,7 @@ param(
        ## Ignore a source path that contains any of the strings in this array
        [string[]] $ignore,
        
-       ## An array of arrays of strings {subModuleName, subModuleUrl}
+       ## An array of arrays of strings {subModule_UserName, subModule_RepoName, subModule_Branch}
        [string[][]] $subModules,
        
        ## Ignore paths other than the source root
