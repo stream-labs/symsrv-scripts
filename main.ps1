@@ -1,5 +1,5 @@
 param(
-	# The directory path of the to the root of the github project
+       # The directory path of the github project
        [Parameter(Mandatory = $true)]
        [string] $localSourceDir,
        
@@ -7,30 +7,29 @@ param(
        [Parameter(Mandatory = $true)]
        [string] $outputFolder,
        
-	# The name of user that owns the github repository
+       # The name of user that owns the github repository
        [Parameter(Mandatory = $true)]
        [string] $repo_userId,
        
-	# The name of the repository
+       # The name of the repository
        [Parameter(Mandatory = $true)]
        [string] $repo_name,
        
-	# The repository branch
+       # The repository branch
        [Parameter(Mandatory = $true)]
        [string] $repo_branch,
        
-	# AWS Access Key to symbols bucket
+       # AWS Access Key to symbols bucket
        [Parameter(Mandatory = $true)]
        [string] $AWS_ACCESS_KEY_ID,
        
-	# AWS Secret Key to symbols bucket
+       # AWS Secret Key to symbols bucket
        [Parameter(Mandatory = $true)]
        [string] $AWS_SECRET_ACCESS_KEY,
        
-	# Optional, source paths to ignore
+       # Optional, source paths to ignore
        [string[]] $ignoreArray
-
-       )
+)
 
 # Not sure why yaml names the repo with the repo_userId, but if the input is formatted like this then just correct it
 $repo_name = $repo_name -replace "$repo_userId/",""

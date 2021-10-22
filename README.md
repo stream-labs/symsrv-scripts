@@ -4,6 +4,7 @@ Either **main.ps1** or **main.bat** can be used as the entry point<br>
 The purpose of the optional batch script is to allow for "-script" in azure-pipelines.yml
 
 - **Debuggers tools from winsdk needs to be installed to default location ${env:ProgramFiles(x86)}**
+- **The working directory needs to be local in order for the scripts to find each other at .\here**
 
 *This script needs to be run after project compilation, when the .pdb's and output files are still in the local directory*
 
