@@ -49,8 +49,6 @@ if ($subModules -ne $null)
        Write-Output $subModules_ArrayArray[0]
 }
 
-cmd /c pause
-
 # Not sure why yaml names the repo with the repo_userId, but if the input is formatted like this then just correct it
 $repo_name = $repo_name -replace "$repo_userId/",""
 
