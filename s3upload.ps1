@@ -12,5 +12,5 @@ $Env:AWS_DEFAULT_REGION = "us-east-2"
 aws s3 cp $symStoreFolder s3://slobs-symbol.streamlabs.com/symbols --recursive --acl public-read
 
 if ($LastExitCode) {
-	Write-Error "AWS Upload Failed"
+	throw
 }

@@ -86,7 +86,14 @@ cmd /c mkdir $outputFolder
 cmd /c "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64\symstore.exe" add /compress /r /f $symbolsFolder /s $outputFolder /t SLOBS
 
 # Upload to aws
-.\s3upload.ps1 -symStoreFolder $outputFolder
+try 
+{
+       .\s3upload.ps1 -symStoreFolder $outputFolder
+}
+catch
+{
+       Write-Error "s3upload.ps1 failed"
+}
 
 # Cleanup
 cmd /c rmdir $outputFolder /s /q
