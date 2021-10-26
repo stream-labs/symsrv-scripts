@@ -1,61 +1,7 @@
-# Original from https://github.com/Haemoglobin/GitHub-Source-Indexer
-# Updated to support submodule paths, 10/15/2021 stevensoftware52 https://github.com/stream-labs
-
-<#
-.DESCRIPTION
-  Github source indexer will index PDB files with HTTP source file references to a Github repository. 
-   - Adapted from http://sourcepack.codeplex.com 
-   
-.PARAMETER symbolsFolder
-  The path of the directory to recursively search for pdb files to index. 
-.PARAMETER userId
-  The github user ID.
-.PARAMETER repository
-  The github repository name containing the matching source files.
-.PARAMETER branch
-  The github branch name, the version of the files in the branch must match the source versions the pdb file was created with.
-.PARAMETER sourcesRoot
-  The root of the source folder - i.e the beginning of the original file paths to be stripped out (obtained using "srctool -r Library.pdb"). 
-  Will default to the longest common file path if not provided. The remainder will be appended to the appropriate Github url for source retrieval. 
-.PARAMETER dbgToolsPath
-  Path to the Debugging Tools for Windows (the srcsrv subfolder) - if not specifed the script tries to find it. 
-  If you don't have the Debugging Tools for Windows in PATH variable you need to provide this argument.
-.PARAMETER gitHubUrl
-  Path to the Github server (defaults to "http://github.com") - override for in-house enterprise github installations.
-.PARAMETER ignore
-  Ignore a source path that contains any of the strings in this array, e.g. -ignore somedir, "some other dir"
-.PARAMETER ignoreUnknown
-  By default this script terminates when it encounters source from a path other than the source root.
-  Pass this switch to instead ignore all paths other than the source root.
-.PARAMETER serverIsRaw
-  If the server serves raw the /raw directory name should not be concatenated to the source urls.
-  Pass this switch to omit the /raw directory, e.g. -gitHubUrl https://raw.github.com -serverIsRaw
-.PARAMETER verifyLocalRepo
-  This switch verifies the local repository from the detected or passed in 'sourcesRoot' by using 
-  git to get the filenames from the tree associated with 'branch' (which is either a branch or 
-  commit). Any filename from the PDB that is found in the tree list, and that is not excluded by 
-  other options, will have its source server information added in the same case that it is seen in 
-  the tree list. Other filenames from the PDB that are not found in the tree list will be ignored. 
-  This is an important switch and is recommended because PDBs don't often store case sensitivity 
-  for files while github servers expect case sensitivity for the files that are requested. Use of 
-  this switch implies switch ignoreUnknown.
-.PARAMETER subModules
-  An array of arrays of strings {subModule_UserName, subModule_RepoName, subModule_Branch}
-  If a file belongs to the sobmodule then it will swap the url's accordingly
-.EXAMPLE 
-  .\github-sourceindexer.ps1 -symbolsFolder "C:\git\DirectoryContainingPdbFilesToIndex" -userId "GithubUsername" -repository "GithubRepositoryName" -branch "master" -sourcesRoot "c:\git\OriginalCompiledProjectPath" -verbose
-  
-  Description
-  -----------
-  This command will index all pdb files located in the C:\git\DirectoryContainingPdbFilesToIndex directory and subdirectories, 
-  adding to the source stream a reference to the master branch of the GithubRepositoryName repository for the github user GithubUsername.
-  
-  For example source indexes added like http://github.com/GithubUsername/GithubRepositoryName/raw/master/ExampleLibrary/LibraryClass.cs 
-  where /ExampleLibrary/LibraryClass.cs is the remainder after removing c:\git\OriginalCompiledProjectPath\ from the beginning of the original compile path. 
-#>
+# Based on https://github.com/Haemoglobin/GitHub-Source-Indexer
 
 param(
-       ## Folder that will be recursively searched for PDB files.
+       ## The path of the directory to recursively search for pdb files to index. 
        [Parameter(Mandatory = $true)]
        [Alias("symbols")]
        [string] $symbolsFolder,
@@ -73,9 +19,11 @@ param(
        [string] $branch,
        
        ## A root path for the source files
+       [Parameter(Mandatory = $true)]
        [string] $sourcesRoot,
        
        ## Debugging Tools for Windows installation path
+       [Parameter(Mandatory = $true)]
        [string] $dbgToolsPath,
        
        ## Github URL
@@ -84,19 +32,14 @@ param(
        ## Ignore a source path that contains any of the strings in this array
        [string[]] $ignore,
        
-       ## An array of arrays of strings {subModule_UserName, subModule_RepoName, subModule_Branch}
+       ## An array of arrays of strings {one_FolderPath,one_UserName,one_RepoName,one_Branch}
        [string[][]] $subModules,
        
-       ## Ignore paths other than the source root
-       [switch] $ignoreUnknown,
+       ## Whether or not to ignore paths other than the source root, ie WINDOWS sources etc
+       [switch] $ignoreUnknown
+  )
        
-       ## Server serves raw: don't concatenate /raw in the path
-       [switch] $serverIsRaw,
-       
-       ## Verify the filenames in the tree in the local repository
-       [switch] $verifyLocalRepo
-       )
-       
+###############################################################
 
 function CorrectPathBackslash {
   param([string] $path)
@@ -174,28 +117,6 @@ function CheckDebuggingToolsPath {
 
 ###############################################################
 
-function FindGitExe {
-    $suffix = "\git\bin\git.exe"
-    
-    $gitexe = ${env:ProgramFiles} + $suffix
-    if (Test-Path $gitexe) {
-        return $gitexe
-    }
-    
-    if( [IntPtr]::size -eq 4 ) {
-        return $null
-    }
-    
-    $gitexe = ${env:ProgramFiles(x86)} + $suffix
-    if (Test-Path $gitexe) {
-        return $gitexe
-    }
-    
-    return $null
-}
-
-###############################################################
-
 function WriteStreamHeader {
   param ([string] $streamPath)
   
@@ -218,7 +139,7 @@ function WriteStreamVariables {
   Add-Content -value "SRCSRV: variables ------------------------------------------" -path $streamPath
   Add-Content -value "SRCSRVVERCTRL=http" -path $streamPath
   Add-Content -value "HTTP_ALIAS=$gitHubUrl" -path $streamPath
-  Add-Content -value "HTTP_EXTRACT_TARGET=%HTTP_ALIAS%/%var2%/%var3%$raw/%var4%/%var5%" -path $streamPath
+  Add-Content -value "HTTP_EXTRACT_TARGET=%HTTP_ALIAS%/%var2%/%var3%/%var4%/%var5%" -path $streamPath
   Add-Content -value "SRCSRVTRG=%http_extract_target%" -path $streamPath
   Add-Content -value "SRCSRVCMD=" -path $streamPath
 }
@@ -239,58 +160,20 @@ function WriteStreamSources {
   }
 
   Add-Content -value "SRCSRV: source files ---------------------------------------" -path $streamPath
-  
-  if ([String]::IsNullOrEmpty($sourcesRoot)) {
-    # That's a little bit hard - we need to guess the source root.
-    # By default we compare all source paths stored in the PDB file
-    # and extract the least common path, eg. for paths:
-    # C:\test\test1\test2\src\Program.cs
-    # C:\test\test1\test2\src\Test.Domain\Domain.cs
-    # we will assume that the source code archive was created from
-    # the C:\test\test1\test2\src\ path - so be careful here!
-      
-    $sourcesRoot = $null
-    foreach ($src in $sources) {
-      if ($sourcesRoot -eq $null) {
-        $sourcesRoot = [System.IO.Path]::GetDirectoryName($src)
-        continue
-      }
-      $sourcesRoot = FindLongestCommonPath $src $sourcesRoot
-    }  
-    $warning = "Sources root not provided, assuming: '$sourcesRoot'. If it's not correct please run the script " + `
-               "with correct value set for -sourcesRoot parameter."
-    Write-Warning $warning
-  }
+    
   $sourcesRoot = CorrectPathBackslash $sourcesRoot
   $outputFileName = [System.IO.Path]::GetFileNameWithoutExtension($sourceArchivePath)
-  
-  #if we're verifying the local repo then get the tree list from the branch/commit
-  $lstree = ""
-  if ($verifyLocalRepo) {
-    $gitexe = FindGitExe
-    if (!$gitexe) {
-      throw "Script error. git.exe not found";
-    }
     
-    $gitrepo = $sourcesRoot + ".git"
-    if (!(Test-Path $gitrepo)) {
-      throw "Script error. git repo not found: $gitrepo";
-    }
-    
-    $lstree = & "$gitexe" "--git-dir=$gitrepo" ls-tree --name-only --full-tree -r "$branch"
-    if ($LASTEXITCODE) {
-      throw "Script error. git could not list the files from commit/branch: $branch";
-    }
-  }
-  
   #other source files
   foreach ($src in $sources) {
     
     #if the source path $src contains a string in the $ignore array, skip it
     [bool] $skip = $false;
-    foreach ($istr in $ignore) {
+    foreach ($istr in $ignore) 
+    {
       $skip = ( ($istr) -and ($src.IndexOf($istr, [System.StringComparison]::OrdinalIgnoreCase) -ge 0) );
-      if ($skip) {
+      if ($skip) 
+      {
         break;
       }
     }
@@ -305,49 +188,31 @@ function WriteStreamSources {
         throw "Script error. The source path ($src) was invalid";
       }
     }
-    $srcStrip = $src.Remove(0, $sourcesRoot.Length).Replace("\", "/")
     
-    if ($verifyLocalRepo) {
-      #get the filepath from the tree list
-      if ($lstree -ceq $srcStrip) {
-        $filepath = $srcStrip
-      } else {
-        $matches = $lstree -ieq $srcStrip
-        if (!$matches.count) {
-          $warning = "File path couldn't be verified, skipping: " + $srcStrip
-          Write-Host "$warning" -foregroundcolor red -backgroundcolor black
-          continue
-        }
-        #Write-Host $matches;
-        if ($matches.count -ne 1) {
-          throw "Script error. Multiple matches in tree found for $srcStrip : $matches";
-        }
-        $filepath = $matches[0]
-      }
-    } else {
-      $filepath = $srcStrip
-    }
+    $srcStrip = $src.Remove(0, $sourcesRoot.Length).Replace("\", "/")    
+    $filepath = $srcStrip
 
-	$indexSourceTo = "$src*$userId*$repository*$branch*$filepath"
-    $urlVerbose = "$gitHubUrl/$userId/$repository$raw/$branch/$filepath"
-	
-	foreach ($subModule_InfoArray in $subModules)
-	{
-		$subModule_UserName = $subModule_InfoArray[0] 		
-		$subModule_RepoName = $subModule_InfoArray[1]
-		$subModule_Branch = $subModule_InfoArray[2]
-		
-		$bool_fpContainsRepo = $filepath -like "$subModule_RepoName/*"
-		
-		if ($bool_fpContainsRepo)
-		{
-			$filepath = $filepath -replace "$subModule_RepoName/"
-			Write-Verbose "Submodule: '$filepath' url will be corrected to repo named '$subModule_RepoName'"
-			$indexSourceTo = "$src*$subModule_UserName*$subModule_RepoName*$subModule_Branch*$filepath"
-			$urlVerbose = "$gitHubUrl/$subModule_UserName/$subModule_RepoName$raw/$subModule_Branch/$filepath"
-			break
-		}		
-	}
+    $indexSourceTo = "$src*$userId*$repository*$branch*$filepath"
+    $urlVerbose = "$gitHubUrl/$userId/$repository/raw/$branch/$filepath"
+    
+    foreach ($subModule_InfoArray in $subModules)
+    {
+      $subModule_FolderPath = $subModule_InfoArray[0] 
+      $subModule_UserName = $subModule_InfoArray[1] 		
+      $subModule_RepoName = $subModule_InfoArray[2]
+      $subModule_Branch = $subModule_InfoArray[3]
+      
+      $bool_fpContainsRepo = $filepath -like "$subModule_FolderPath/*"
+      
+      if ($bool_fpContainsRepo)
+      {
+        $filepath = $filepath -replace "$subModule_FolderPath/"
+        Write-Verbose "Submodule: '$filepath' url will be corrected to repo named '$subModule_RepoName'"
+        $indexSourceTo = "$src*$subModule_UserName*$subModule_RepoName*$subModule_Branch*$filepath"
+        $urlVerbose = "$gitHubUrl/$subModule_UserName/$subModule_RepoName/raw/$subModule_Branch/$filepath"
+        break;
+      }		
+    }
 	
     Add-Content -value $indexSourceTo -path $streamPath
     Write-Verbose "Indexing source to $urlVerbose"
@@ -357,19 +222,8 @@ function WriteStreamSources {
 ###############################################################
 # START
 ###############################################################
-if ($verifyLocalRepo) {
-  $ignoreUnknown = $TRUE
-}
-
 if ([String]::IsNullOrEmpty($gitHubUrl)) {
     $gitHubUrl = "https://github.com";
-}
-
-# If the server serves raw then /raw does not need to be concatenated
-if ($serverIsRaw) {
-  $raw = "";
-} else {
-  $raw = "/raw";
 }
 
 # Check the debugging tools path
@@ -399,8 +253,7 @@ foreach ($pdb in $pdbs) {
       
     Write-Verbose "Saving the generated stream into the PDB file..."
     . $pdbstrPath -w -s:srcsrv "-p:$pdbFullName" "-i:$streamContent"
-    
-    
+        
     Write-Verbose "Done."
   } finally {
     Remove-Item $streamContent

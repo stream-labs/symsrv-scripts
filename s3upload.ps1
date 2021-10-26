@@ -1,13 +1,15 @@
-# $args[0] = AWS_ACCESS_KEY_ID
-# $args[1] = AWS_SECRET_ACCESS_KEY
-# $args[2] = local path to folder that will be uploaded
+param(
+       # The directory path of the github project
+       [Parameter(Mandatory = $true)]
+       [string] $symStoreFolder
+)
 
-$Env:AWS_ACCESS_KEY_ID=$args[0]
-$Env:AWS_SECRET_ACCESS_KEY=$args[1]
-$Env:AWS_DEFAULT_REGION="us-east-2"
+# Local environment variables, even if there are system ones with the same name, these are used for the cmd below
+$Env:AWS_ACCESS_KEY_ID = $Env:AWS_SYMB_ACCESS_KEY_ID
+$Env:AWS_SECRET_ACCESS_KEY = $Env:AWS_SYMB_SECRET_ACCESS_KEY
+$Env:AWS_DEFAULT_REGION = "us-east-2"
 
-cmd /c echo on
-aws s3 cp $args[2] s3://slobs-symbol.streamlabs.com/symbols --recursive --acl public-read
+aws s3 cp $symStoreFolder s3://slobs-symbol.streamlabs.com/symbols --recursive --acl public-read
 
 if ($LastExitCode) {
 	Write-Error "AWS Upload Failed"
