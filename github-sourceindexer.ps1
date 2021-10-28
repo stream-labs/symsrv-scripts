@@ -159,6 +159,8 @@ function WriteStreamSources {
     return;
   }
 
+  $numSources = $sources.Count
+  Write-Verbose "Stream source contains $numSources files"
   Add-Content -value "SRCSRV: source files ---------------------------------------" -path $streamPath
     
   $sourcesRoot = CorrectPathBackslash $sourcesRoot
@@ -178,11 +180,13 @@ function WriteStreamSources {
       }
     }
     if ($skip) {
+      Write-Verbose "Skipping $src"
       continue;
     }
     
     if (!$src.StartsWith($sourcesRoot, [System.StringComparison]::CurrentCultureIgnoreCase)) {
       if ($ignoreUnknown) {
+        Write-Verbose "Ignore $src"
         continue;
       } else {
         throw "Script error. The source path ($src) was invalid";
