@@ -193,7 +193,7 @@ function WriteStreamSources {
     $filepath = $srcStrip
 
     $indexSourceTo = "$src*$userId*$repository*$branch*$filepath"
-    $urlVerbose = "$gitHubUrl/$userId/$repository/raw/$branch/$filepath"
+    $urlVerbose = "$gitHubUrl/$userId/$repository/$branch/$filepath"
     
     foreach ($subModule_InfoArray in $subModules)
     {
@@ -209,7 +209,7 @@ function WriteStreamSources {
         $filepath = $filepath -replace "$subModule_FolderPath/"
         Write-Verbose "Submodule: '$filepath' url will be corrected to repo named '$subModule_RepoName'"
         $indexSourceTo = "$src*$subModule_UserName*$subModule_RepoName*$subModule_Branch*$filepath"
-        $urlVerbose = "$gitHubUrl/$subModule_UserName/$subModule_RepoName/raw/$subModule_Branch/$filepath"
+        $urlVerbose = "$gitHubUrl/$subModule_UserName/$subModule_RepoName/$subModule_Branch/$filepath"
         break;
       }		
     }
@@ -223,7 +223,7 @@ function WriteStreamSources {
 # START
 ###############################################################
 if ([String]::IsNullOrEmpty($gitHubUrl)) {
-    $gitHubUrl = "https://github.com";
+    $gitHubUrl = "https://raw.githubusercontent.com/";
 }
 
 # Check the debugging tools path
