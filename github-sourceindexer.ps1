@@ -188,7 +188,19 @@ function WriteStreamSources {
         throw "Script error. The source path ($src) was invalid";
       }
     }
-    
+
+    try
+    {
+      # Github url's are case sensitive, match file case identically
+      $wrongCasingPath = $src
+      $canonicalCasePath = Get-ChildItem -Path $wrongCasingPath.Replace("\","\*") | Where FullName -IEQ $wrongCasingPath | Select -ExpandProperty FullName
+      $src = $canonicalCasePath
+    }
+    catch
+    {
+      Write-Warning "Could not resolve file path for $src"
+    }
+
     $srcStrip = $src.Remove(0, $sourcesRoot.Length).Replace("\", "/")    
     $filepath = $srcStrip
 
