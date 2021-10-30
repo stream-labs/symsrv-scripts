@@ -193,6 +193,8 @@ function WriteStreamSources {
       }
     }
 
+    Write-Verbose "Attempting src = $src"
+
     try
     {
       # Github url's are case sensitive, match file case identically
@@ -203,11 +205,22 @@ function WriteStreamSources {
     catch
     {
       Write-Warning "Could not resolve file path for $src"
+      continue
     }
 
-    $srcStrip = $src.Remove(0, $sourcesRoot.Length).Replace("\", "/")    
-    $filepath = $srcStrip
+    $srcStrip = ""
 
+    try
+    {
+      $srcStrip = $src.Remove(0, $sourcesRoot.Length).Replace("\", "/")    
+    }
+    catch
+    {
+      Write-Warning "Could not resolve srcStrip"
+      continue
+    }
+
+    $filepath = $srcStrip
     $indexSourceTo = "$src*$userId*$repository*$branch*$filepath"
     $urlVerbose = "$gitHubUrl/$userId/$repository/$branch/$filepath"
     
