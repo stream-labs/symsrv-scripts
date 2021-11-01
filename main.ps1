@@ -47,7 +47,7 @@ if ($ignoreArray -ne $null)
 $repo_name = $repo_name -replace "$repo_userId/",""
 $symbolsFolder = "symbols_tempJ1M39VNNDF"
 $outputFolder = "symstore_temp6JB24HH2Z"
-$dbgToolsPath = "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64"
+$dbgToolsPath = "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x86"
 
 ##
 # Begin
