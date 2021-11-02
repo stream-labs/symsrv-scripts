@@ -19,7 +19,10 @@ param(
        [string[]] $ignoreArray,
        
        # An array of arrays of strings "one_FolderPath,one_UserName,one_RepoName,one_Branch;two_FolderPath,two_UserName,two_RepoName,two_Branch"
-       [string[][]] $subModules
+       [string[][]] $subModules,
+       
+       # Paths to find .pdb's in, if empty then the path to the project is used
+       [string[]] $pdbPaths
 )
 
 ##
@@ -42,6 +45,11 @@ if ($subModules -ne $null)
 if ($ignoreArray -ne $null)
 {
        $ignoreArray = $ignoreArray.split(",")
+}
+
+if ($pdbPaths -ne $null)
+{
+       $pdbPaths = $pdbPaths.split(",")
 }
 
 $repo_name = $repo_name -replace "$repo_userId/",""
@@ -75,7 +83,18 @@ for ($i = 0 ; $i -lt $subModules_ArrayArray.Count ; $i++)
 # Copy symbols from the source directory
 cmd /c rmdir $symbolsFolder /s /q
 cmd /c mkdir $symbolsFolder
-cmd /c .\pdbcpy.cmd $localSourceDir $symbolsFolder
+
+if ($pdbPaths -eq $null)
+{
+       cmd /c .\pdbcpy.cmd $localSourceDir $symbolsFolder
+}
+else
+{
+       foreach ($pdbPath in $pdbPaths)
+       {
+              cmd /c .\pdbcpy.cmd $pdbPath $symbolsFolder
+       }
+}
 
 # Edit the pdb's with http addresses
 .\github-sourceindexer.ps1 -ignoreUnknown -ignore $ignoreArray -sourcesroot $localSourceDir -dbgToolsPath $dbgToolsPath -symbolsFolder $symbolsFolder -userId $repo_userId -repository $repo_name -branch $repo_branch -subModules $subModules_ArrayArray -verbose
