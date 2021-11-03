@@ -183,6 +183,12 @@ function WriteStreamSources {
       Write-Verbose "Skipping $src"
       continue;
     }
+
+    if (-Not (Test-Path -path $src))  
+    {
+      Write-Verbose "Not found '$src'"
+      continue;
+    }
     
     if (!$src.StartsWith($sourcesRoot, [System.StringComparison]::CurrentCultureIgnoreCase)) {
       if ($ignoreUnknown) {
