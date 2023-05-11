@@ -108,12 +108,18 @@ cmd /c "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64\symstore.exe" add
 try 
 {
        .\s3upload.ps1 -symStoreFolder $outputFolder
+
+       # Cleanup
+       cmd /c rmdir $outputFolder /s /q
+       cmd /c rmdir $symbolsFolder /s /q
 }
 catch
 {
        Write-Error "s3upload.ps1 failed"
-}
+       
+       cmd /c rmdir $outputFolder /s /q
+       cmd /c rmdir $symbolsFolder /s /q
 
-# Cleanup
-cmd /c rmdir $outputFolder /s /q
-cmd /c rmdir $symbolsFolder /s /q
+       # Run the failure upward to the calling script if there is one
+       exit 1
+}
