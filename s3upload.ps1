@@ -24,7 +24,13 @@ Write-VerboseLog "AWS environment variables set."
 # AWS S3 Copy
 Write-VerboseLog "Starting AWS S3 copy..."
 try {
-    aws s3 cp $symStoreFolder s3://slobs-symbol.streamlabs.com/symbols --recursive --acl public-read
+    $awsCommand = "aws s3 cp $symStoreFolder s3://slobs-symbol.streamlabs.com/symbols --recursive --acl public-read"
+    if ($Env:VERBOSE_SYMB_UPLOAD -eq "true") {
+        $awsCommand += " --debug"
+        Write-VerboseLog "Running AWS command with debug mode enabled."
+    }
+    
+    Invoke-Expression $awsCommand
     if ($LastExitCode -ne 0) {
         throw "AWS S3 copy failed with exit code $LastExitCode."
     }
